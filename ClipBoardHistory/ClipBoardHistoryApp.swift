@@ -9,9 +9,24 @@ import SwiftUI
 
 @main
 struct ClipBoardHistoryApp: App {
+    @StateObject var dataEngine:DataEngine = DataEngine()
     var body: some Scene {
         WindowGroup {
+            let clipBoardManager:ClipBoardManager = ClipBoardManager()
+            
             ContentView()
+                .environmentObject(dataEngine)
+                .onAppear(){
+                    clipBoardManager.setDataEngine(dataEngine: dataEngine)
+                    clipBoardManager.registerGlobalShortcutListener()
+                }
+                .onDisappear {
+                    clipBoardManager.removeEventListener()
+                }
         }
+    }
+    
+    init() {
+        NSApplication.shared.setActivationPolicy(.accessory)  // Make app run in the background
     }
 }
