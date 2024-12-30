@@ -85,7 +85,6 @@ class ClipBoardManager:ObservableObject {
     }
     
     private func pasteText() {
-        print("pasteText called")
         hideOverlay()
         searchStarted = false
         if (self.dataEngine?.selectedText != nil) {
@@ -98,12 +97,15 @@ class ClipBoardManager:ObservableObject {
         flagChangeEventMonitor = nil
     }
     
-    private func pasteContentToCursor(content: String) {
-        
+    func pasteContentToClipBoard(content: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(content, forType: .string)
+    }
+    
+    private func pasteContentToCursor(content: String) {
         
+        pasteContentToClipBoard(content: content)
         
         let source = CGEventSource(stateID: .hidSystemState)
         let keyDownEvent = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // Virtual key for 'V'

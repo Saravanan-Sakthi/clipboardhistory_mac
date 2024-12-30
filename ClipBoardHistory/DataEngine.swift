@@ -9,7 +9,10 @@ import Cocoa
 import SwiftUI
 
 class DataEngine : ObservableObject {
-    private var maxHistoryLimit: Int = 10
+    private var maxHistoryLimit: Int = -1
+    init() {
+        maxHistoryLimit = UserDefaults.standard.integer(forKey: "maxHistoryLimit")
+    }
     
     func getMaxHistoryLimit() -> Int {
         return maxHistoryLimit
@@ -17,6 +20,7 @@ class DataEngine : ObservableObject {
     
     func setMaxHistoryLimit(limit : Int) {
         maxHistoryLimit = limit
+        UserDefaults.standard.set(maxHistoryLimit, forKey: "maxHistoryLimit")
     }
     
     @Published private var copiedTexts: [String] = []
@@ -28,11 +32,25 @@ class DataEngine : ObservableObject {
         return copiedTexts
     }
     
+    func moveToTop(text : String) {
+        if (copiedTexts.contains(text) && copiedTexts.last != text) {
+            copiedTexts.removeAll(where: {
+                textItr in
+                textItr == text
+            })
+            copiedTexts.append(text)
+        }
+    }
+    
     func addToCopiedTexts(text : String) {
+        if (maxHistoryLimit <= 0) {
+            return;
+        }
         if (copiedTexts.contains(text)) {
+            moveToTop(text : text)
             return
         }
-        if copiedTexts.count == maxHistoryLimit {
+        if (copiedTexts.count == maxHistoryLimit) {
             copiedTexts.removeFirst()
         }
         copiedTexts.append(text)
