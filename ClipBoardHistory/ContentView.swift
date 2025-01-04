@@ -18,10 +18,13 @@ struct ContentView: View {
     var body: some View {
         VStack {
             
-            Text("press Cmd + C to copy to the clipboard (other modes of copy do not work)")
+            Text("press Cmd + (C/X) to copy/cut content to the clipboard (other modes of copy do not work)")
                 .font(.caption)
                 .multilineTextAlignment(.leading)
-            Text("press V while holding Cmd + Opt to display the history")
+            Text("press Ctrl + V to display the history, use V (or) Shift + V to switch content")
+                .font(.caption)
+                .multilineTextAlignment(.leading)
+            Text("release Ctrl to paste the content to the cursor")
                 .font(.caption)
                 .multilineTextAlignment(.leading)
             

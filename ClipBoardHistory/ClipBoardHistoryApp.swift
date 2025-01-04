@@ -18,15 +18,12 @@ struct ClipBoardHistoryApp: App {
                 .environmentObject(dataEngine)
                 .onAppear(){
                     clipBoardManager.setDataEngine(dataEngine: dataEngine)
+                    ClipBoardManager.setClipBoardManager(clipBoardManager: clipBoardManager)
                     clipBoardManager.registerGlobalShortcutListener()
                 }
                 .onDisappear {
                     clipBoardManager.removeEventListener()
                 }
         }
-    }
-    
-    init() {
-        NSApplication.shared.setActivationPolicy(.accessory)  // Make app run in the background
     }
 }

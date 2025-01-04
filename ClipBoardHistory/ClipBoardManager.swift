@@ -9,28 +9,53 @@ import Cocoa
 import AppKit
 import SwiftUI
 
-class ClipBoardManager:ObservableObject {
+@objc class ClipBoardManager:NSObject {
     
-    private var dataEngine : DataEngine?
+    public var dataEngine : DataEngine?
+    @objc public static var clipBoardManager : ClipBoardManager?
     
     func setDataEngine(dataEngine : DataEngine) {
         self.dataEngine = dataEngine
     }
     
+    static func setClipBoardManager(clipBoardManager : ClipBoardManager) {
+        ClipBoardManager.clipBoardManager = clipBoardManager
+    }
+    
     private var keyDownEventMonitor: Any?
-    private var flagChangeEventMonitor: Any?
+    
+    private var eventTap: CFMachPort?
     
     private var overlayWindow: NSWindow?
     
-    private var searchStarted : Bool = false
+    public var searchStarted : Bool = false
     
     func registerGlobalShortcutListener() {
         print("Initializing global key down listener")
         
         keyDownEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: handleKeyDown(event: ))
-        
+        startListening()
         
         print("listener initialized")
+    }
+    
+    func startListening() {
+        let eventMask: CGEventMask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.flagsChanged.rawValue)
+        
+        eventTap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: eventMask,
+            callback: eventTapCallback,
+            userInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+        )
+        
+        if let eventTap = eventTap {
+            let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+            CGEvent.tapEnable(tap: eventTap, enable: true)
+        }
     }
     
     func removeEventListener() {
@@ -40,43 +65,15 @@ class ClipBoardManager:ObservableObject {
         }
     }
     
-    private func handleFlagsChange(event : NSEvent) {
-        if event.modifierFlags.contains(.command) && event.modifierFlags.contains(.option) {
-            return
-        }
-        pasteText()
-    }
-    
     private func handleKeyDown(event : NSEvent) {
-        if event.modifierFlags.contains(.command) && event.keyCode == 8 { // 8 = C
+        if event.modifierFlags.contains(.command) && (event.keyCode == 8 || event.keyCode == 7) { // 8 = C , 7 = x
             getCopiedText()
-        }
-        if event.modifierFlags.contains(.command) && event.modifierFlags.contains(.option){
-            var forwardSearch : Bool = false
-            var search : Bool = false
-            if (event.keyCode == 9) { // 9 = v
-                searchStarted = true
-                search = true
-                if ((flagChangeEventMonitor == nil)) {
-                    flagChangeEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged, handler: handleFlagsChange(event:))
-                }
-            }
-            if (event.keyCode == 124) {
-                search = true
-                forwardSearch = true
-            }
-            if (event.keyCode == 123) {
-                search = true
-            }
-            if searchStarted && search {
-                self.dataEngine?.selectText(forward: forwardSearch)
-                showOverlay(selectedText : self.dataEngine?.selectedText ?? "")
-            }
+            return
         }
     }
     
     private func getCopiedText() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { // 100ms delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { // 200ms delay
                 let pasteboard = NSPasteboard.general
                 if let copiedText = pasteboard.string(forType: .string) {
                     self.dataEngine?.addToCopiedTexts(text: String(copiedText))
@@ -84,26 +81,27 @@ class ClipBoardManager:ObservableObject {
             }
     }
     
-    private func pasteText() {
+    public func pasteText() {
         hideOverlay()
         searchStarted = false
         if (self.dataEngine?.selectedText != nil) {
             pasteContentToCursor(content: self.dataEngine?.selectedText ?? "")
             self.dataEngine?.resetSelected()
         }
-        if let eventMonitor = flagChangeEventMonitor {
-            NSEvent.removeMonitor(eventMonitor)
-        }
-        flagChangeEventMonitor = nil
     }
     
-    func pasteContentToClipBoard(content: String) {
+    public func clearPasteBoardContents() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
+    }
+    
+    public func pasteContentToClipBoard(content: String) {
+        clearPasteBoardContents()
+        let pasteboard = NSPasteboard.general
         pasteboard.setString(content, forType: .string)
     }
     
-    private func pasteContentToCursor(content: String) {
+    public func pasteContentToCursor(content: String) {
         
         pasteContentToClipBoard(content: content)
         
@@ -116,7 +114,7 @@ class ClipBoardManager:ObservableObject {
         keyUpEvent?.post(tap: .cgAnnotatedSessionEventTap)
     }
     
-    private func showOverlay(selectedText: String) {
+    public func showOverlay(selectedText: String) {
         let overlayView = OverlayView(selectedText: selectedText)
         if (overlayWindow != nil) {
             overlayWindow?.contentView = NSHostingView(rootView: overlayView)
@@ -144,4 +142,39 @@ class ClipBoardManager:ObservableObject {
             overlayWindow = nil
         }
     
+}
+
+
+let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon in
+    let clipBoardManager : ClipBoardManager = ClipBoardManager.clipBoardManager!
+    if type == .keyDown {
+        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        
+        if event.flags.contains(.maskControl){
+            
+            var forwardSearch : Bool = false
+            var search : Bool = false
+            if (keyCode == 9) { // 9 = v
+                clipBoardManager.searchStarted = true
+                search = true
+            }
+            if event.flags.contains(.maskShift) {
+                search = true
+                forwardSearch = true
+            }
+            if clipBoardManager.searchStarted  && search {
+                clipBoardManager.dataEngine?.selectText(forward: forwardSearch)
+                clipBoardManager.showOverlay(selectedText : ClipBoardManager.clipBoardManager?.dataEngine?.selectedText ?? "")
+                clipBoardManager.clearPasteBoardContents()
+                return nil
+            }
+        }
+        
+    }
+    if (type == .flagsChanged) {
+        if (clipBoardManager.searchStarted && !event.flags.contains(.maskControl)){
+            clipBoardManager.pasteText()
+        }
+    }
+    return Unmanaged.passUnretained(event)
 }
