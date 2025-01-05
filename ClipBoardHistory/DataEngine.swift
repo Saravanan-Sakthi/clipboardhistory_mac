@@ -9,9 +9,17 @@ import Cocoa
 import SwiftUI
 
 class DataEngine : ObservableObject {
-    private var maxHistoryLimit: Int = -1
+    private var maxHistoryLimit: Int = 10
+    private var defaultDoubleCmdPressTime : Float = 0.3
+    
     init() {
         maxHistoryLimit = UserDefaults.standard.integer(forKey: "maxHistoryLimit")
+        let idleCmdPressTime = UserDefaults.standard.float(forKey: "idleDoubleCmdPressTime")
+        defaultDoubleCmdPressTime = idleCmdPressTime <= 0 ? 0.3 : 10
+    }
+    
+func getDefaultDoubleCmdPressTime() -> Float{
+        return defaultDoubleCmdPressTime
     }
     
     func getMaxHistoryLimit() -> Int {
