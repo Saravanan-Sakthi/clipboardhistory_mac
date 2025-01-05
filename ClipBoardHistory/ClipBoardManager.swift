@@ -30,6 +30,9 @@ import SwiftUI
     
     public var searchStarted : Bool = false
     
+    public var cmdPressedTime : TimeInterval = Date().timeIntervalSince1970
+    public var doubleCmdPressed : Bool = false
+    
     func registerGlobalShortcutListener() {
         print("Initializing global key down listener")
         
@@ -84,6 +87,7 @@ import SwiftUI
     public func pasteText() {
         hideOverlay()
         searchStarted = false
+        doubleCmdPressed = false
         if (self.dataEngine?.selectedText != nil) {
             pasteContentToCursor(content: self.dataEngine?.selectedText ?? "")
             self.dataEngine?.resetSelected()
@@ -147,10 +151,9 @@ import SwiftUI
 
 let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon in
     let clipBoardManager : ClipBoardManager = ClipBoardManager.clipBoardManager!
+    let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
     if type == .keyDown {
-        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-        
-        if event.flags.contains(.maskControl){
+        if clipBoardManager.doubleCmdPressed && event.flags.contains(.maskCommand){
             
             var forwardSearch : Bool = false
             var search : Bool = false
@@ -172,7 +175,17 @@ let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon in
         
     }
     if (type == .flagsChanged) {
-        if (clipBoardManager.searchStarted && !event.flags.contains(.maskControl)){
+        if (keyCode == 55 && event.flags.contains(.maskCommand)) {
+            let diff : Double = Date().timeIntervalSince1970 - clipBoardManager.cmdPressedTime
+            let defaultDoubleCmdPressTime = clipBoardManager.dataEngine?.getDefaultDoubleCmdPressTime() ?? -1
+            if (Float(diff) <= defaultDoubleCmdPressTime) {
+                clipBoardManager.doubleCmdPressed = true
+            } else {
+                clipBoardManager.doubleCmdPressed = false
+            }
+            clipBoardManager.cmdPressedTime = Date().timeIntervalSince1970
+        }
+        if (clipBoardManager.searchStarted && !event.flags.contains(.maskCommand)){
             clipBoardManager.pasteText()
         }
     }

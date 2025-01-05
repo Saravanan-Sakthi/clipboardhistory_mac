@@ -21,10 +21,10 @@ struct ContentView: View {
             Text("press Cmd + (C/X) to copy/cut content to the clipboard (other modes of copy do not work)")
                 .font(.caption)
                 .multilineTextAlignment(.leading)
-            Text("press Ctrl + V to display the history, use V (or) Shift + V to switch content")
+            Text("double press and hold Cmd + V to display the history, use V (or) Shift + V to switch content")
                 .font(.caption)
                 .multilineTextAlignment(.leading)
-            Text("release Ctrl to paste the content to the cursor")
+            Text("release Cmd to paste the content to the cursor")
                 .font(.caption)
                 .multilineTextAlignment(.leading)
             
