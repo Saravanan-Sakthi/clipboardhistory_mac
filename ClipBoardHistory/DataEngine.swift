@@ -15,7 +15,7 @@ class DataEngine : ObservableObject {
     init() {
         maxHistoryLimit = UserDefaults.standard.integer(forKey: "maxHistoryLimit")
         let idleCmdPressTime = UserDefaults.standard.float(forKey: "idleDoubleCmdPressTime")
-        defaultDoubleCmdPressTime = idleCmdPressTime <= 0 ? 0.3 : 10
+        defaultDoubleCmdPressTime = idleCmdPressTime <= 0 ? 0.3 : idleCmdPressTime
     }
     
 func getDefaultDoubleCmdPressTime() -> Float{

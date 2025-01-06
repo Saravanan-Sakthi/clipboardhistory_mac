@@ -9,7 +9,7 @@ import Cocoa
 import AppKit
 import SwiftUI
 
-@objc class ClipBoardManager:NSObject {
+@objc class ClipBoardManager: NSObject {
     
     public var dataEngine : DataEngine?
     @objc public static var clipBoardManager : ClipBoardManager?
@@ -118,8 +118,12 @@ import SwiftUI
         keyUpEvent?.post(tap: .cgAnnotatedSessionEventTap)
     }
     
-    public func showOverlay(selectedText: String) {
-        let overlayView = OverlayView(selectedText: selectedText)
+    public func showOverlay(selectedText: String, unMask : Bool) {
+        var textToShow : String = selectedText
+        if (!unMask) {
+            textToShow = TextMasker.getMaskedText(input: selectedText)
+        }
+        let overlayView = OverlayView(selectedText: textToShow)
         if (overlayWindow != nil) {
             overlayWindow?.contentView = NSHostingView(rootView: overlayView)
         } else {
@@ -167,7 +171,7 @@ let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon in
             }
             if clipBoardManager.searchStarted  && search {
                 clipBoardManager.dataEngine?.selectText(forward: forwardSearch)
-                clipBoardManager.showOverlay(selectedText : ClipBoardManager.clipBoardManager?.dataEngine?.selectedText ?? "")
+                clipBoardManager.showOverlay(selectedText : ClipBoardManager.clipBoardManager?.dataEngine?.selectedText ?? "", unMask: event.flags.contains(.maskAlternate))
                 clipBoardManager.clearPasteBoardContents()
                 return nil
             }
@@ -187,6 +191,12 @@ let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon in
         }
         if (clipBoardManager.searchStarted && !event.flags.contains(.maskCommand)){
             clipBoardManager.pasteText()
+        }
+        if (clipBoardManager.searchStarted && event.flags.contains(.maskAlternate)) {
+            clipBoardManager.showOverlay(selectedText : ClipBoardManager.clipBoardManager?.dataEngine?.selectedText ?? "", unMask: true)
+        }
+        if (clipBoardManager.searchStarted && !event.flags.contains(.maskAlternate)) {
+            clipBoardManager.showOverlay(selectedText : ClipBoardManager.clipBoardManager?.dataEngine?.selectedText ?? "", unMask: false)
         }
     }
     return Unmanaged.passUnretained(event)
