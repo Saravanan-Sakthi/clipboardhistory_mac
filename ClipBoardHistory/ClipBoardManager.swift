@@ -84,10 +84,14 @@ import SwiftUI
             }
     }
     
-    public func pasteText() {
+    public func resetSearch() {
         hideOverlay()
         searchStarted = false
         doubleCmdPressed = false
+    }
+    
+    public func pasteText() {
+        resetSearch()
         if (self.dataEngine?.selectedText != nil) {
             pasteContentToCursor(content: self.dataEngine?.selectedText ?? "")
             self.dataEngine?.resetSelected()
@@ -157,6 +161,9 @@ let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon in
     let clipBoardManager : ClipBoardManager = ClipBoardManager.clipBoardManager!
     let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
     if type == .keyDown {
+        if (clipBoardManager.searchStarted && keyCode == 53) {
+            clipBoardManager.resetSearch()
+        }
         if clipBoardManager.doubleCmdPressed && event.flags.contains(.maskCommand){
             
             var forwardSearch : Bool = false
@@ -192,12 +199,14 @@ let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon in
         if (clipBoardManager.searchStarted && !event.flags.contains(.maskCommand)){
             clipBoardManager.pasteText()
         }
+        
         if (clipBoardManager.searchStarted && event.flags.contains(.maskAlternate)) {
             clipBoardManager.showOverlay(selectedText : ClipBoardManager.clipBoardManager?.dataEngine?.selectedText ?? "", unMask: true)
         }
         if (clipBoardManager.searchStarted && !event.flags.contains(.maskAlternate)) {
             clipBoardManager.showOverlay(selectedText : ClipBoardManager.clipBoardManager?.dataEngine?.selectedText ?? "", unMask: false)
         }
+        
     }
     return Unmanaged.passUnretained(event)
 }
