@@ -13,7 +13,8 @@ struct ContentView: View {
     @State private var showChangeSizeDialogBox: Bool = false
     @State private var currentSize: Int = -1
     @State private var newSize: Int = -1
-    
+    @State private var unmask : Bool = false
+    @State private var maskingSwitch : Bool = TextMasker.getIsMaskEnabled()
     
     var body: some View {
         VStack {
@@ -31,12 +32,15 @@ struct ContentView: View {
             Text("History")
                 .bold().font(.headline)
                 .padding()
+        
             
             List(dataEngine.getCopiedTexts().reversed() , id: \.self) { item in
             
                 HStack{
-                    Text(item).font(.system(size: 18))
-                    Button("move to top"){
+                    @State var textToShow = unmask ? item : TextMasker.getMaskedText(input: item)
+                    Text(textToShow).font(.system(size: 18))
+                    Button("copy"){
+                        ClipBoardManager.clipBoardManager?.pasteContentToClipBoard(content: item)
                         dataEngine.moveToTop(text: item)
                     }
                     .buttonStyle(.borderedProminent)
@@ -44,10 +48,28 @@ struct ContentView: View {
                 
             }
             
-            Button("Clear History"){
-                dataEngine.clearHistory()
+            
+            
+            HStack {
+                
+                Button("Clear History"){
+                    dataEngine.clearHistory()
+                }
+                .buttonStyle(.borderedProminent)
+                
+                if (TextMasker.getIsMaskEnabled()) {
+                    Button(unmask ? "Mask" : "UnMask") {
+                        unmask = !unmask
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                
+                Button(maskingSwitch ? "Disable Masking" : "Enable Masking") {
+                    TextMasker.setIsMaskEnabled(maskEnabled: !maskingSwitch)
+                    maskingSwitch = TextMasker.getIsMaskEnabled()
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
             
             HStack {
                 Text("Size of history : \(currentSize)").onAppear{
